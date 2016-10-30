@@ -71,7 +71,7 @@ function json_ld_preprocess_html(&$vars) {
     }
   }
   else {
-    $jsonld['@type'] = "Organization";
+    $jsonld['@type'] = variable_get('json_ld_business_type', '');
     $jsonld['address'] = array(
       'streetAddress' => variable_get('json_ld_address', ''),
       'addressLocality' => variable_get('json_ld_city', ''),

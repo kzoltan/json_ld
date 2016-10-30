@@ -5,3 +5,4 @@ package = Custom
 version = 7.x-0.1
 dependencies[] = entity
 
+configure = admin/config/search/json-ld
