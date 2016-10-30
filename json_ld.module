@@ -1,0 +1,112 @@
+<?php
+/**
+ * @file
+ * Module file for the JSON-LD.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function json_ld_permission() {
+  return array(
+    'configure jsonld' => array(
+      'title' => t('Configure JSON-LD'),
+      'description' => t('Configure JSON-LD Settings'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function json_ld_menu() {
+  $items = array();
+
+  $items['admin/config/search/json-ld'] = array(
+    'type' => MENU_NORMAL_ITEM,
+    'title' => 'JSON-LD',
+    'description' => 'Adds JSON-LD to a site.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('json_ld_settings_form'),
+    'access arguments' => array('configure jsonld'),
+    'weight' => 10,
+    'file' => 'includes/json_ld.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements template_preprocess_html().
+ */
+function json_ld_preprocess_html(&$vars) {
+  // Base vars.
+  $jsonld = array();
+  $jsonld['@context'] = 'http://schema.org';
+
+  // Grab the variables;
+  $query = db_query("SELECT * FROM {variable} WHERE name LIKE 'json_ld_%'");
+  foreach ($query->fetchAll() as $result) {
+    $json_vars[$result->name] = unserialize($result->value);
+  }
+
+  // Check Current Node.
+  $node = menu_get_object();
+  if (isset($node)) {
+    // Check if the Current node type matches our vars.
+    foreach ($json_vars as $name => $value) {
+      $check = str_replace('json_ld_node_type_', '', $name);
+      if ($node->type == $check && $value) {
+        $jsonld['@type'] = variable_get('json_ld_schema_' . $node->type, 'Article');
+        $content = variable_get('json_ld_content_' . $node->type, '');
+      }
+    }
+
+    $jsonld['headline'] = $node->title;
+    $jsonld['datePublished'] = date('c', $node->created);
+
+    if (!empty($content) && $content != '- None -') {
+      $field = render(field_view_field('node', $node, $content, array('label'=>'hidden')));
+      $jsonld['description'] = strip_tags($field);
+    }
+  }
+  else {
+    $jsonld['@type'] = "Organization";
+    $jsonld['address'] = array(
+      'streetAddress' => variable_get('json_ld_address', ''),
+      'addressLocality' => variable_get('json_ld_city', ''),
+      'addressRegion' => variable_get('json_ld_state', ''),
+      'postalCode' => variable_get('json_ld_zip', ''),
+    );
+    $jsonld['telephone'] = variable_get('json_ld_phone', '');
+  }
+
+  // Site Name.
+  if (variable_get('structured_data_site_name_default', FALSE)) {
+    $jsonld['name'] = variable_get('site_name','');
+  }
+  else {
+    $jsonld['name'] = variable_get('json_ld_site_name_custom','');
+  }
+
+  // Add the logo.
+  $jsonld['logo'] = theme_get_setting('logo');
+
+  // Add urls
+  $head_elements = drupal_add_html_head();
+  if (!empty($head_elements['metatag_canonical'])) {
+    $jsonld['url'] = $head_elements['metatag_canonical']['#value'];
+  }
+  else {
+    $path = drupal_get_path_alias(current_path());
+    $jsonld['url'] = $GLOBALS['base_url'] . '/' . $path;
+  }
+
+  $json_ld_script = array(
+    '#tag' => 'script',
+    '#attributes' => array('type' => 'application/ld+json'),
+    '#value' => defined('JSON_UNESCAPED_SLASHES') ? json_encode($jsonld, JSON_UNESCAPED_SLASHES) : json_encode($jsonld),
+  );
+
+  drupal_add_html_head($json_ld_script, 'structured_data_json_ld');
+}

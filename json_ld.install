@@ -1,0 +1,15 @@
+<?php
+/**
+ * @file
+ * Install file for the JSON-LD.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function json_ld_uninstall() {
+  // Remove all variables.
+  db_delete('variable')
+    ->condition('name', db_like('json_ld_') . '%', 'LIKE')
+    ->execute();
+}
