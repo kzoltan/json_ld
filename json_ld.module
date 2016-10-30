@@ -197,5 +197,5 @@ function json_ld_preprocess_html(&$vars) {
     '#value' => defined('JSON_UNESCAPED_SLASHES') ? json_encode($jsonld, JSON_UNESCAPED_SLASHES) : json_encode($jsonld),
   );
 
-  drupal_add_html_head($json_ld_script, 'structured_data_json_ld');
+  drupal_add_html_head($json_ld_script, 'json_ld');
 }
