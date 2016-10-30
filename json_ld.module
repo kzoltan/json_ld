@@ -48,19 +48,15 @@ function json_ld_preprocess_html(&$vars) {
   $node = menu_get_object();
   if (isset($node)) {
     $jsonld += json_ld_output_node($node);
+    $key = $node->title;
   }
   // Basic Default Types.
   else {
     $jsonld += json_ld_output_default();
+    $key = 'default';
   }
 
-  $json_ld_script = array(
-    '#tag' => 'script',
-    '#attributes' => array('type' => 'application/ld+json'),
-    '#value' => defined('JSON_UNESCAPED_SLASHES') ? json_encode($jsonld, JSON_UNESCAPED_SLASHES) : json_encode($jsonld),
-  );
-
-  drupal_add_html_head($json_ld_script, 'json_ld');
+  json_ld_add_script($jsonld, $key);
 }
 
 /**
@@ -83,7 +79,7 @@ function json_ld_output_node($node) {
 
   // Grab the default vars to use.
   $logo = json_ld_get_logo();
-  $image = json_ld_get_large_image();
+  $default_image = json_ld_get_large_image();
   $sitename = variable_get('json_ld_site_name', 'site_name');
 
   // Check if the Current node type matches our vars.
@@ -256,4 +252,41 @@ function json_ld_get_large_image() {
     );
   }
   return NULL;
+}
+
+/**
+ * Adds the script to the head.
+ *
+ * @param  array $jsonld
+ *   The JSON-LD data array.
+ *
+ * @param  array $key
+ *   Key string so we can add multiple if need be.
+ */
+function json_ld_add_script($jsonld, $key) {
+  // Set the script array.
+  $json_ld_script = array(
+    '#tag' => 'script',
+    '#attributes' => array('type' => 'application/ld+json'),
+    '#value' => defined('JSON_UNESCAPED_SLASHES') ? json_encode($jsonld, JSON_UNESCAPED_SLASHES) : json_encode($jsonld),
+  );
+  // Set this thing.
+  drupal_add_html_head($json_ld_script, 'json_ld_' . $key);
+}
+
+
+/**
+ * Public function that adds JSON-LD Output for a node.
+ *
+ * @param  object $node
+ *   The node object.
+ */
+function json_ld_add_output($node) {
+  // Set the base vars.
+  $jsonld = array();
+  $jsonld['@context'] = 'http://schema.org';
+  // Add our stuff.
+  $jsonld += json_ld_output_node($node);
+  // Set this thing.
+  json_ld_add_script($jsonld, 'add_' . $node->title);
 }
