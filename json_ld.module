@@ -79,6 +79,9 @@ function json_ld_preprocess_html(&$vars) {
       'postalCode' => variable_get('json_ld_zip', ''),
     );
     $jsonld['telephone'] = variable_get('json_ld_phone', '');
+
+    // Add the logo.
+    $jsonld['logo'] = theme_get_setting('logo');
   }
 
   // Site Name.
@@ -88,9 +91,6 @@ function json_ld_preprocess_html(&$vars) {
   else {
     $jsonld['name'] = variable_get('json_ld_site_name_custom','');
   }
-
-  // Add the logo.
-  $jsonld['logo'] = theme_get_setting('logo');
 
   // Add urls
   $head_elements = drupal_add_html_head();
