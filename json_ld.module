@@ -47,11 +47,11 @@ function json_ld_preprocess_html(&$vars) {
   // Check Current Node.
   $node = menu_get_object();
   if (isset($node)) {
-    $jsonld = json_ld_output_node($node);
+    $jsonld += json_ld_output_node($node);
   }
   // Basic Default Types.
   else {
-    $jsonld = json_ld_output_default();
+    $jsonld += json_ld_output_default();
   }
 
   $json_ld_script = array(

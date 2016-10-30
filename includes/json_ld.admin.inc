@@ -78,6 +78,7 @@ function json_ld_settings_form() {
       'Organization' => 'Organization',
       'Airline' => 'Airline',
       'Corporation' => 'Corporation',
+      'GeneralContractor' => 'General Contractor',
       'EducationalOrganization' => 'Educational Organization',
       'GovernmentOrganization' => 'Government Organization',
       'LocalBusiness' => 'Local Business',
