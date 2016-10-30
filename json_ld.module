@@ -140,7 +140,7 @@ function json_ld_preprocess_html(&$vars) {
 
     // Org publishing trill.
     $jsonld['publisher'] = array(
-      '@type' => variable_get('json_ld_business_type', 'Organization'),
+      '@type' => 'Organization',
       'name' => $sitename,
       'logo' => $logo,
     );
