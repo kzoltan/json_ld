@@ -36,15 +36,16 @@ function json_ld_settings_form() {
   );
 
   // Logo settings.
-  $logo = theme_get_setting('logo');
-  $current_logo = array(
-    'path' => $logo,
-    'attributes' => array()
-  );
-  $form['site']['json_ld_site_logo'] = array(
-    '#type' =>'item',
-    '#title' => t('The current site logo'),
-    '#markup' => theme_image($current_logo),
+  $form['top']['logo'] = array(
+    '#name' => 'block_image',
+    '#type' => 'managed_file',
+    '#title' => t('Upload Your Logo File'),
+    '#description' => t('Width should be at least 696px!!  Upload a file, allowed extensions: jpg, jpeg, png, gif.  We can\'t use the theme location file since we need to grab the file properties via the managed file API.'),
+    '#default_value' => variable_get('json_ld_site_logo', ''),
+    '#upload_location' => 'public://',
+    '#upload_validators' => array(
+      'file_validate_extensions' => array('gif png jpg jpeg'),
+    ),
   );
 
   // Group filter.
@@ -109,8 +110,9 @@ function json_ld_settings_form() {
   // Set the header.
   $header = array(
     'type' => t('Node Type'),
-    'schema' => t('Schema Type'),
-    'content' => t('Content Field'),
+    'schema' => t('Node Schema Type'),
+    'content' => t('Node Content Field'),
+    'image' => t('Node Image Field'),
   );
 
   // Grab all the node types.
@@ -122,8 +124,7 @@ function json_ld_settings_form() {
       '#options' => array(
         '' => (' - None - '),
         'Article' => t('Article'),
-        'Blog' => t('Blog'),
-        'CollectionPage' => t('Collection Page'),
+        'BlogPosting' => t('Blog Posting'),
         'Book' => t('Book'),
         'Event' => t('Event'),
         'LocalBusiness' => t('Local Business'),
@@ -136,26 +137,47 @@ function json_ld_settings_form() {
       '#value' => variable_get('json_ld_schema_' . $type->type, ''),
     );
     // Clear out vars to be safe and happy.
-    $content = $fields = $field_options = array();
+    $content = $fields = $field_options = $image_options = array();
 
     // Grab the fields.
     $fields = field_info_instances('node', $type->type);
     // Go through and set this up.
     if (count($fields) > 0) {
-      $field_options[] = (' - None - ');
+      $field_options[] = $image_options[] = (' - None - ');
       foreach ($fields as $field) {
-        $field_options[] = $field['field_name'];
+        // Grab the widget and win this.
+        $widget = field_info_widget_types($field['widget']['type']);
+        if ($widget['module'] == 'image' || $widget['module'] == 'media') {
+          // Image types only.
+          $image_options[] = $field['field_name'];
+        }
+        else {
+          // For the field select list.
+          $field_options[] = $field['field_name'];
+        }
       }
-      // Schema select.
+      // Content select.
       $content = array(
         '#type' => 'select',
         '#options' => drupal_map_assoc($field_options),
         '#name' => 'content[json_ld_content_' . $type->type . ']',
         '#value' => variable_get('json_ld_content_' . $type->type, ''),
       );
+
+      // Image select.
+      $image = array(
+        '#type' => 'select',
+        '#options' => drupal_map_assoc($image_options),
+        '#name' => 'image[json_ld_image_' . $type->type . ']',
+        '#value' => variable_get('json_ld_image_' . $type->type, ''),
+      );
     }
     else {
       $content = array(
+        '#type' =>'item',
+        '#markup' => t('No Fields to Use.'),
+      );
+      $image = array(
         '#type' =>'item',
         '#markup' => t('No Fields to Use.'),
       );
@@ -165,6 +187,7 @@ function json_ld_settings_form() {
       'type' => t($type->type),
       'schema' => array('data' => $schema),
       'content' => array('data' => $content),
+      'image' => array('data' => $image),
     );
   }
 
@@ -192,6 +215,9 @@ function json_ld_settings_form() {
   $form['content'] = array(
     '#type' => 'value',
   );
+  $form['image'] = array(
+    '#type' => 'value',
+  );
 
   // Custom submit handler.
   $form['#submit'][] = '_json_ld_form_submit';
@@ -203,9 +229,20 @@ function json_ld_settings_form() {
  * Custom submit handler for json_ld_settings_form
  */
 function _json_ld_form_submit($form, &$form_state) {
+  // Go through and win each value for use later.
   foreach ($form_state['values'] as $key => $values) {
     switch ($key) {
+      // Save the File.
+      case 'logo':
+        global $user;
+        $file = file_load($values);
+        $file->status = FILE_STATUS_PERMANENT;
+        file_save($file);
+        file_usage_add($file, 'json_ld', 'logo', $user->uid);
+        variable_set('json_ld_site_logo', $file->fid);
+        break;
       case 'table':
+        // Set variables to use later.
         foreach ($values as $name => $value) {
           if ($value) {
             variable_set($name, TRUE);
@@ -216,18 +253,11 @@ function _json_ld_form_submit($form, &$form_state) {
         }
         break;
       case 'schema':
-        foreach ($values as $name => $value) {
-          if (!empty($value)) {
-            variable_set($name, $value);
-          }
-          else {
-            variable_del($name);
-          }
-        }
-        break;
       case 'content':
+      case 'image':
+        // Set variables to use later.
         foreach ($values as $name => $value) {
-          if ($value != '- None -') {
+          if ($value != '- None -' && !empty($value)) {
             variable_set($name, $value);
           }
           else {

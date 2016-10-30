@@ -41,6 +41,7 @@ function json_ld_menu() {
  */
 function json_ld_preprocess_html(&$vars) {
   // Base vars.
+  global $base_url;
   $jsonld = array();
   $jsonld['@context'] = 'http://schema.org';
 
@@ -48,6 +49,27 @@ function json_ld_preprocess_html(&$vars) {
   $query = db_query("SELECT * FROM {variable} WHERE name LIKE 'json_ld_%'");
   foreach ($query->fetchAll() as $result) {
     $json_vars[$result->name] = unserialize($result->value);
+  }
+
+  // Load up image to use later.
+  $fid = variable_get('json_ld_site_logo', '');
+  if (!empty($fid)) {
+    $file = file_load($fid);
+    // Set the logo array to use later.
+    $logo = array(
+      '@type' => 'ImageObject',
+      'url' => file_create_url($file->uri),
+      'height' => $file->height,
+      'width' => $file->width,
+    );
+  }
+
+  // Add name for later use.
+  if (variable_get('structured_data_site_name_default', FALSE)) {
+    $sitename = variable_get('site_name','');
+  }
+  else {
+    $sitename = variable_get('json_ld_site_name_custom','');
   }
 
   // Check Current Node.
@@ -59,19 +81,79 @@ function json_ld_preprocess_html(&$vars) {
       if ($node->type == $check && $value) {
         $jsonld['@type'] = variable_get('json_ld_schema_' . $node->type, 'Article');
         $content = variable_get('json_ld_content_' . $node->type, '');
+        $image = variable_get('json_ld_image_' . $node->type, '');
       }
     }
 
+    // Main Entity Page Stuff.
+    $path = drupal_get_path_alias(current_path());
+    $jsonld['mainEntityOfPage'] = array(
+      '@type' => 'WebPage',
+      '@id' => $base_url . '/' . $path,
+    );
+
+    // Title win.
     $jsonld['headline'] = $node->title;
+
+    // Content Image Winz.
+    if (!empty($image) && $image != '- None -') {
+      $field = field_get_items('node', $node, $image);
+      if (!empty($field)) {
+        // If multiple, just grab the first and do it.
+        if (isset($field[0])) {
+          $jsonld['image'] = array(
+            '@type' => 'ImageObject',
+            'url' => file_create_url($field[0]['uri']),
+            'height' => $field[0]['height'],
+            'width' => $field[0]['width'],
+          );
+        }
+        else {
+          $jsonld['image'] = array(
+            '@type' => 'ImageObject',
+            'url' => file_create_url($field['uri']),
+            'height' => $field['height'],
+            'width' => $field['width'],
+          );
+        }
+      }
+      else {
+        // Default image FTW.
+        $jsonld['image'] = $logo;
+      }
+    }
+    else {
+      // Default image FTW.
+      $jsonld['image'] = $logo;
+    }
+
+    // Date wins.
     $jsonld['datePublished'] = date('c', $node->created);
+    $jsonld['dateModified'] = date('c', $node->changed);
+
+    // Author wins
+    $author = user_load($node->uid);
+    $jsonld['author'] = array(
+      '@type' => 'Person',
+      'name' => $author->name,
+    );
+
+    // Org publishing trill.
+    $jsonld['publisher'] = array(
+      '@type' => variable_get('json_ld_business_type', 'Organization'),
+      'name' => $sitename,
+      'logo' => $logo,
+    );
 
     if (!empty($content) && $content != '- None -') {
       $field = render(field_view_field('node', $node, $content, array('label'=>'hidden')));
       $jsonld['description'] = strip_tags($field);
     }
   }
+  // Basic Default Types.
   else {
-    $jsonld['@type'] = variable_get('json_ld_business_type', '');
+    // Set the type and address stuffs for general pages.
+    $jsonld['@type'] = variable_get('json_ld_business_type', 'Organization');
     $jsonld['address'] = array(
       'streetAddress' => variable_get('json_ld_address', ''),
       'addressLocality' => variable_get('json_ld_city', ''),
@@ -80,26 +162,21 @@ function json_ld_preprocess_html(&$vars) {
     );
     $jsonld['telephone'] = variable_get('json_ld_phone', '');
 
-    // Add the logo.
-    $jsonld['logo'] = theme_get_setting('logo');
-  }
+    // Throw in the logo from above.
+    $json['logo'] = $logo;
 
-  // Site Name.
-  if (variable_get('structured_data_site_name_default', FALSE)) {
-    $jsonld['name'] = variable_get('site_name','');
-  }
-  else {
-    $jsonld['name'] = variable_get('json_ld_site_name_custom','');
-  }
+    // Site Name.
+    $jsonld['name'] = $sitename;
 
-  // Add urls
-  $head_elements = drupal_add_html_head();
-  if (!empty($head_elements['metatag_canonical'])) {
-    $jsonld['url'] = $head_elements['metatag_canonical']['#value'];
-  }
-  else {
-    $path = drupal_get_path_alias(current_path());
-    $jsonld['url'] = $GLOBALS['base_url'] . '/' . $path;
+    // Add urls
+    $head_elements = drupal_add_html_head();
+    if (!empty($head_elements['metatag_canonical'])) {
+      $jsonld['url'] = $head_elements['metatag_canonical']['#value'];
+    }
+    else {
+      $path = drupal_get_path_alias(current_path());
+      $jsonld['url'] = $base_url . '/' . $path;
+    }
   }
 
   $json_ld_script = array(
