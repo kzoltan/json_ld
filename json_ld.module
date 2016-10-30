@@ -51,12 +51,24 @@ function json_ld_preprocess_html(&$vars) {
     $json_vars[$result->name] = unserialize($result->value);
   }
 
-  // Load up image to use later.
-  $fid = variable_get('json_ld_site_logo', '');
-  if (!empty($fid)) {
-    $file = file_load($fid);
+  // Load up logo to use later.
+  $fids = variable_get('json_ld_site_logo_small', '');
+  if (!empty($fids)) {
+    $file = file_load($fids);
     // Set the logo array to use later.
     $logo = array(
+      '@type' => 'ImageObject',
+      'url' => file_create_url($file->uri),
+      'height' => $file->height,
+      'width' => $file->width,
+    );
+  }
+
+  $fidl = variable_get('json_ld_site_logo_large', '');
+  if (!empty($fidl)) {
+    $file = file_load($fidl);
+    // Set the logo array to use later.
+    $default_image = array(
       '@type' => 'ImageObject',
       'url' => file_create_url($file->uri),
       'height' => $file->height,
@@ -119,12 +131,12 @@ function json_ld_preprocess_html(&$vars) {
       }
       else {
         // Default image FTW.
-        $jsonld['image'] = $logo;
+        $jsonld['image'] = $default_image;
       }
     }
     else {
       // Default image FTW.
-      $jsonld['image'] = $logo;
+      $jsonld['image'] = $default_image;
     }
 
     // Date wins.

@@ -36,12 +36,25 @@ function json_ld_settings_form() {
   );
 
   // Logo settings.
-  $form['site']['logo'] = array(
+  $form['site']['logo_large'] = array(
     '#name' => 'block_image',
     '#type' => 'managed_file',
-    '#title' => t('Upload Your Logo File'),
-    '#description' => t('Width should be at least 696px!!  Upload a file, allowed extensions: jpg, jpeg, png, gif.  We can\'t use the theme location file since we need to grab the file properties via the managed file API.'),
-    '#default_value' => variable_get('json_ld_site_logo', ''),
+    '#title' => t('Upload Your Large Image File (non logo)'),
+    '#description' => t('Width should be at least 696px!!  Upload a file, allowed extensions: jpg, jpeg, png, gif.'),
+    '#default_value' => variable_get('json_ld_site_logo_large', ''),
+    '#upload_location' => 'public://',
+    '#upload_validators' => array(
+      'file_validate_extensions' => array('gif png jpg jpeg'),
+    ),
+  );
+
+    // Logo settings.
+  $form['site']['logo_small'] = array(
+    '#name' => 'block_image',
+    '#type' => 'managed_file',
+    '#title' => t('Upload Your Default Logo File'),
+    '#description' => t('Ideally, logos are exactly 60px tall with width <= 600px.  Logos with a height > 60px or width > 600px will be rejected by Google.  Upload a file, allowed extensions: jpg, jpeg, png, gif.'),
+    '#default_value' => variable_get('json_ld_site_logo_small', ''),
     '#upload_location' => 'public://',
     '#upload_validators' => array(
       'file_validate_extensions' => array('gif png jpg jpeg'),
@@ -233,13 +246,14 @@ function _json_ld_form_submit($form, &$form_state) {
   foreach ($form_state['values'] as $key => $values) {
     switch ($key) {
       // Save the File.
-      case 'logo':
+      case 'logo_small':
+      case 'logo_large':
         global $user;
         $file = file_load($values);
         $file->status = FILE_STATUS_PERMANENT;
         file_save($file);
         file_usage_add($file, 'json_ld', 'logo', $user->uid);
-        variable_set('json_ld_site_logo', $file->fid);
+        variable_set('json_ld_site_' . $key, $file->fid);
         break;
       case 'table':
         // Set variables to use later.
