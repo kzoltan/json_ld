@@ -17,22 +17,21 @@ function json_ld_settings_form() {
     '#collapsed' => FALSE,
   );
 
-  // Site Name.
-  $form['site']['json_ld_site_name_default'] = array(
-    '#type' =>'checkbox',
-    '#title' => t('Use the default site name'),
-    '#default_value' => variable_get('json_ld_site_name_default', TRUE),
+  // Site Name / Company Name.
+  $form['site']['json_ld_site_name'] = array(
+    '#type' =>'textfield',
+    '#title' => t('Site Name / Company Name'),
+    '#default_value' => variable_get('json_ld_site_name', ''),
+    '#description' => t('The Company Name or the Site Name you want the site to identify with.'),
+    '#required' => TRUE,
   );
 
-  $form['site']['json_ld_site_name_custom'] = array(
+  $form['site']['json_ld_site_desc'] = array(
     '#type' =>'textfield',
-    '#title' => t('Custom site name'),
-    '#default_value' => variable_get('json_ld_site_name_custom', ''),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="json_ld_site_name_default"]' => array('checked' => FALSE),
-      ),
-    ),
+    '#title' => t('Site Default Description'),
+    '#default_value' => variable_get('json_ld_site_desc', ''),
+    '#description' => t('Default description for the site, similar to metatag description.'),
+    '#required' => TRUE,
   );
 
   // Logo settings.
@@ -46,6 +45,7 @@ function json_ld_settings_form() {
     '#upload_validators' => array(
       'file_validate_extensions' => array('gif png jpg jpeg'),
     ),
+    '#required' => TRUE,
   );
 
     // Logo settings.
@@ -59,6 +59,7 @@ function json_ld_settings_form() {
     '#upload_validators' => array(
       'file_validate_extensions' => array('gif png jpg jpeg'),
     ),
+    '#required' => TRUE,
   );
 
   // Group filter.

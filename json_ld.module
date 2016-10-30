@@ -41,154 +41,17 @@ function json_ld_menu() {
  */
 function json_ld_preprocess_html(&$vars) {
   // Base vars.
-  global $base_url;
   $jsonld = array();
   $jsonld['@context'] = 'http://schema.org';
-
-  // Grab the variables;
-  $query = db_query("SELECT * FROM {variable} WHERE name LIKE 'json_ld_%'");
-  foreach ($query->fetchAll() as $result) {
-    $json_vars[$result->name] = unserialize($result->value);
-  }
-
-  // Load up logo to use later.
-  $fids = variable_get('json_ld_site_logo_small', '');
-  if (!empty($fids)) {
-    $file = file_load($fids);
-    // Set the logo array to use later.
-    $logo = array(
-      '@type' => 'ImageObject',
-      'url' => file_create_url($file->uri),
-      'height' => $file->height,
-      'width' => $file->width,
-    );
-  }
-
-  $fidl = variable_get('json_ld_site_logo_large', '');
-  if (!empty($fidl)) {
-    $file = file_load($fidl);
-    // Set the logo array to use later.
-    $default_image = array(
-      '@type' => 'ImageObject',
-      'url' => file_create_url($file->uri),
-      'height' => $file->height,
-      'width' => $file->width,
-    );
-  }
-
-  // Add name for later use.
-  if (variable_get('structured_data_site_name_default', FALSE)) {
-    $sitename = variable_get('site_name','');
-  }
-  else {
-    $sitename = variable_get('json_ld_site_name_custom','');
-  }
 
   // Check Current Node.
   $node = menu_get_object();
   if (isset($node)) {
-    // Check if the Current node type matches our vars.
-    foreach ($json_vars as $name => $value) {
-      $check = str_replace('json_ld_node_type_', '', $name);
-      if ($node->type == $check && $value) {
-        $jsonld['@type'] = variable_get('json_ld_schema_' . $node->type, 'Article');
-        $content = variable_get('json_ld_content_' . $node->type, '');
-        $image = variable_get('json_ld_image_' . $node->type, '');
-      }
-    }
-
-    // Main Entity Page Stuff.
-    $path = drupal_get_path_alias(current_path());
-    $jsonld['mainEntityOfPage'] = array(
-      '@type' => 'WebPage',
-      '@id' => $base_url . '/' . $path,
-    );
-
-    // Title win.
-    $jsonld['headline'] = $node->title;
-
-    // Content Image Winz.
-    if (!empty($image) && $image != '- None -') {
-      $field = field_get_items('node', $node, $image);
-      if (!empty($field)) {
-        // If multiple, just grab the first and do it.
-        if (isset($field[0])) {
-          $jsonld['image'] = array(
-            '@type' => 'ImageObject',
-            'url' => file_create_url($field[0]['uri']),
-            'height' => $field[0]['height'],
-            'width' => $field[0]['width'],
-          );
-        }
-        else {
-          $jsonld['image'] = array(
-            '@type' => 'ImageObject',
-            'url' => file_create_url($field['uri']),
-            'height' => $field['height'],
-            'width' => $field['width'],
-          );
-        }
-      }
-      else {
-        // Default image FTW.
-        $jsonld['image'] = $default_image;
-      }
-    }
-    else {
-      // Default image FTW.
-      $jsonld['image'] = $default_image;
-    }
-
-    // Date wins.
-    $jsonld['datePublished'] = date('c', $node->created);
-    $jsonld['dateModified'] = date('c', $node->changed);
-
-    // Author wins
-    $author = user_load($node->uid);
-    $jsonld['author'] = array(
-      '@type' => 'Person',
-      'name' => $author->name,
-    );
-
-    // Org publishing trill.
-    $jsonld['publisher'] = array(
-      '@type' => 'Organization',
-      'name' => $sitename,
-      'logo' => $logo,
-    );
-
-    if (!empty($content) && $content != '- None -') {
-      $field = render(field_view_field('node', $node, $content, array('label'=>'hidden')));
-      $jsonld['description'] = strip_tags($field);
-    }
+    $jsonld = json_ld_output_node($node);
   }
   // Basic Default Types.
   else {
-    // Set the type and address stuffs for general pages.
-    $jsonld['@type'] = variable_get('json_ld_business_type', 'Organization');
-    $jsonld['address'] = array(
-      'streetAddress' => variable_get('json_ld_address', ''),
-      'addressLocality' => variable_get('json_ld_city', ''),
-      'addressRegion' => variable_get('json_ld_state', ''),
-      'postalCode' => variable_get('json_ld_zip', ''),
-    );
-    $jsonld['telephone'] = variable_get('json_ld_phone', '');
-
-    // Throw in the logo from above.
-    $json['logo'] = $logo;
-
-    // Site Name.
-    $jsonld['name'] = $sitename;
-
-    // Add urls
-    $head_elements = drupal_add_html_head();
-    if (!empty($head_elements['metatag_canonical'])) {
-      $jsonld['url'] = $head_elements['metatag_canonical']['#value'];
-    }
-    else {
-      $path = drupal_get_path_alias(current_path());
-      $jsonld['url'] = $base_url . '/' . $path;
-    }
+    $jsonld = json_ld_output_default();
   }
 
   $json_ld_script = array(
@@ -198,4 +61,199 @@ function json_ld_preprocess_html(&$vars) {
   );
 
   drupal_add_html_head($json_ld_script, 'json_ld');
+}
+
+/**
+ * Output JSON-LD for a node.
+ *
+ * @param  object $node
+ *   The node object.
+ *
+ * @return array
+ *   The array to use for JSON-LD.
+ */
+function json_ld_output_node($node) {
+  global $base_url;
+
+  // Grab the variables;
+  $query = db_query("SELECT * FROM {variable} WHERE name LIKE 'json_ld_%'");
+  foreach ($query->fetchAll() as $result) {
+    $json_vars[$result->name] = unserialize($result->value);
+  }
+
+  // Grab the default vars to use.
+  $logo = json_ld_get_logo();
+  $image = json_ld_get_large_image();
+  $sitename = variable_get('json_ld_site_name', 'site_name');
+
+  // Check if the Current node type matches our vars.
+  foreach ($json_vars as $name => $value) {
+    $check = str_replace('json_ld_node_type_', '', $name);
+    if ($node->type == $check && $value) {
+      $data['@type'] = variable_get('json_ld_schema_' . $node->type, 'Article');
+      $content = variable_get('json_ld_content_' . $node->type, '');
+      $image = variable_get('json_ld_image_' . $node->type, '');
+    }
+  }
+
+  // Main Entity Page Stuff.
+  $path = drupal_get_path_alias(current_path());
+  $data['mainEntityOfPage'] = array(
+    '@type' => 'WebPage',
+    '@id' => $base_url . '/' . $path,
+  );
+
+  // Title win.
+  $data['headline'] = $node->title;
+
+  // Content Image Winz.
+  if (!empty($image) && $image != '- None -') {
+    $field = field_get_items('node', $node, $image);
+    if (!empty($field)) {
+      // If multiple, just grab the first and do it.
+      if (isset($field[0])) {
+        $data['image'] = array(
+          '@type' => 'ImageObject',
+          'url' => file_create_url($field[0]['uri']),
+          'height' => $field[0]['height'],
+          'width' => $field[0]['width'],
+        );
+      }
+      else {
+        $data['image'] = array(
+          '@type' => 'ImageObject',
+          'url' => file_create_url($field['uri']),
+          'height' => $field['height'],
+          'width' => $field['width'],
+        );
+      }
+    }
+    else {
+      // Default image FTW.
+      $data['image'] = $default_image;
+    }
+  }
+  else {
+    // Default image FTW.
+    $data['image'] = $default_image;
+  }
+
+  // Date wins.
+  $data['datePublished'] = date('c', $node->created);
+  $data['dateModified'] = date('c', $node->changed);
+
+  // Author wins
+  $author = user_load($node->uid);
+  $data['author'] = array(
+    '@type' => 'Person',
+    'name' => $author->name,
+  );
+
+  // Org publishing trill.
+  $data['publisher'] = array(
+    '@type' => 'Organization',
+    'name' => $sitename,
+    'logo' => $logo,
+  );
+
+  // Set the description.
+  if (!empty($content) && $content != '- None -') {
+    $field = render(field_view_field('node', $node, $content, array('label'=>'hidden')));
+    $data['description'] = strip_tags($field);
+  }
+  else {
+    $data['description'] = variable_get('json_ld_site_desc', '');
+  }
+
+  return $data;
+}
+
+/**
+ * Output JSON-LD for default types..
+ *
+ * @return array
+ *   The array to use for JSON-LD.
+ */
+function json_ld_output_default() {
+  global $base_url;
+
+  // Grab the default vars to use.
+  $logo = json_ld_get_logo();
+  $sitename = variable_get('json_ld_site_name', 'site_name');
+  $desc = variable_get('json_ld_site_desc', '');
+
+  // Set the type and address stuffs for general pages.
+  $data['@type'] = variable_get('json_ld_business_type', 'Organization');
+  $data['address'] = array(
+    'streetAddress' => variable_get('json_ld_address', ''),
+    'addressLocality' => variable_get('json_ld_city', ''),
+    'addressRegion' => variable_get('json_ld_state', ''),
+    'postalCode' => variable_get('json_ld_zip', ''),
+  );
+  $data['telephone'] = variable_get('json_ld_phone', '');
+
+  // Throw in the logo from above.
+  $json['logo'] = $logo;
+
+  // Site Name.
+  $data['name'] = $sitename;
+
+  // Add urls
+  $head_elements = drupal_add_html_head();
+  if (!empty($head_elements['metatag_canonical'])) {
+    $data['url'] = $head_elements['metatag_canonical']['#value'];
+  }
+  else {
+    $path = drupal_get_path_alias(current_path());
+    $data['url'] = $base_url . '/' . $path;
+  }
+
+  // Set the site description.
+  $data['description'] = $desc;
+
+  return $data;
+}
+
+/**
+ * Gets the default logo.
+ *
+ * @return array|NULL
+ *   Returns the JSON-LD array or NULL.
+ */
+function json_ld_get_logo() {
+  // Load up logo to use later.
+  $fid = variable_get('json_ld_site_logo_small', '');
+  if (!empty($fid)) {
+    $file = file_load($fid);
+    // Set the logo array to use later.
+    return array(
+      '@type' => 'ImageObject',
+      'url' => file_create_url($file->uri),
+      'height' => $file->height,
+      'width' => $file->width,
+    );
+  }
+  return NULL;
+}
+
+/**
+ * Gets the default large image.
+ *
+ * @return array|NULL
+ *   Returns the JSON-LD array or NULL.
+ */
+function json_ld_get_large_image() {
+  // Load up logo to use later.
+  $fid = variable_get('json_ld_site_logo_large', '');
+  if (!empty($fid)) {
+    $file = file_load($fid);
+    // Set the logo array to use later.
+    return array(
+      '@type' => 'ImageObject',
+      'url' => file_create_url($file->uri),
+      'height' => $file->height,
+      'width' => $file->width,
+    );
+  }
+  return NULL;
 }
