@@ -36,7 +36,7 @@ function json_ld_settings_form() {
   );
 
   // Logo settings.
-  $form['top']['logo'] = array(
+  $form['site']['logo'] = array(
     '#name' => 'block_image',
     '#type' => 'managed_file',
     '#title' => t('Upload Your Logo File'),
