@@ -12,9 +12,11 @@ Config at: admin/config/search/json-ld
 
 ##### Add output to the header:
 ```
-json_ld_add_output($node);
+json_ld_add_output($node, $data);
 ```
-This is useful if you are in a view or other multi node output situations.  the $node var is the fully loaded $node object.
+This is useful if you are in a view or other multi node output situations.
+The $node var is the fully loaded $node object.
+The $data var is an array you make to pass it to add.  ie: $data['tag'] = 'trill'
 
 
 ### Hook functions:
