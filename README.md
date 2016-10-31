@@ -10,5 +10,9 @@ Config at: admin/config/search/json-ld
 
 ### Public functions:
 
-#### json_ld_add_output($node);
-This will add json+ld to the header.  This is useful if you are in a view or other multi node output situations.  the $node var is the fully loaded $node object.
+#### Add output to the header:
+
+```
+json_ld_add_output($node);
+```
+This is useful if you are in a view or other multi node output situations.  the $node var is the fully loaded $node object.

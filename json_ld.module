@@ -72,6 +72,7 @@ function json_ld_views_pre_render(&$view) {
       }
     }
 
+    // Add output to the nodes.
     if (isset($nodez)) {
       $nodes = node_load_multiple($nodez);
       foreach ($nodes as $node) {
@@ -188,6 +189,11 @@ function json_ld_output_node($node) {
     $data['description'] = variable_get('json_ld_site_desc', '');
   }
 
+  // Alter data if need be.
+  // See hook_json_ld_output_node_alter() in the API documentation.
+  drupal_alter('json_ld_output_node', $data);
+
+
   return $data;
 }
 
@@ -233,6 +239,10 @@ function json_ld_output_default() {
 
   // Set the site description.
   $data['description'] = $desc;
+
+  // Alter data if need be.
+  // See hook_json_ld_output_default_alter() in the API documentation.
+  drupal_alter('json_ld_output_default', $data);
 
   return $data;
 }
@@ -305,15 +315,22 @@ function json_ld_add_script($jsonld, $key) {
 /**
  * Public function that adds JSON-LD Output for a node.
  *
- * @param  object $node
+ * @param object $node
  *   The node object.
+ *
+ * @param array|NULL $data
+ *   Additional data that may be added to the output.
  */
-function json_ld_add_output($node) {
+function json_ld_add_output($node, $data = NULL) {
   // Set the base vars.
   $jsonld = array();
   $jsonld['@context'] = 'http://schema.org';
   // Add our stuff.
   $jsonld += json_ld_output_node($node);
+  // Add your stuff
+  if (isset($data) && is_array($data)) {
+    $jsonld += $data;
+  }
   // Set this thing.
   json_ld_add_script($jsonld, 'add_' . $node->title);
 }
