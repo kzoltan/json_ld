@@ -10,8 +10,7 @@
  * @param array $data
  *   The JSON-LD Config.
  */
-function hook_json_ld_output_node_alter(&$data) {
-}
+function hook_json_ld_output_node_alter(&$data) {}
 
 
 /**
@@ -20,5 +19,4 @@ function hook_json_ld_output_node_alter(&$data) {
  * @param array $data
  *   The JSON-LD Config.
  */
-function hook_json_ld_output_default_alter(&$data) {
-}
+function hook_json_ld_output_default_alter(&$data) {}

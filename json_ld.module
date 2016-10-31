@@ -181,9 +181,11 @@ function json_ld_output_node($node) {
     $field = field_view_field('node', $node, $content, array('label'=>'hidden'));
     $field = render($field);
     // Clean up the string so it is just text.
+    $field = strip_tags($field);
     $field = str_replace(PHP_EOL, '', $field);
     $field = trim(preg_replace('/\t+/', '', $field));
-    $data['description'] = strip_tags($field);
+    $field = preg_replace("/ {2,}/", ' ', $field);
+    $data['description'] = $field;
   }
   else {
     $data['description'] = variable_get('json_ld_site_desc', '');
