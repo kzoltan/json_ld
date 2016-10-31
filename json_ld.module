@@ -110,11 +110,14 @@ function json_ld_output_node($node) {
   foreach ($json_vars as $name => $value) {
     $check = str_replace('json_ld_node_type_', '', $name);
     if ($node->type == $check && $value) {
-      $data['@type'] = variable_get('json_ld_schema_' . $node->type, 'Article');
+      $type = variable_get('json_ld_schema_' . $node->type, 'Article');
       $content = variable_get('json_ld_content_' . $node->type, '');
       $image = variable_get('json_ld_image_' . $node->type, '');
     }
   }
+
+  // Set the type.
+  $data['@type'] = isset($type) ? $type: 'Article';
 
   // Main Entity Page Stuff.
   $path = drupal_get_path_alias(current_path());
