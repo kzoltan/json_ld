@@ -31,6 +31,7 @@ function json_ld_settings_form() {
     '#title' => t('Site Default Description'),
     '#default_value' => variable_get('json_ld_site_desc', ''),
     '#description' => t('Default description for the site, similar to metatag description.'),
+    '#maxlength' => 1024,
     '#required' => TRUE,
   );
 
@@ -123,7 +124,7 @@ function json_ld_settings_form() {
   );
 
   // Set the header.
-  $header = array(
+  $node_header = array(
     'type' => t('Node Type'),
     'schema' => t('Node Schema Type'),
     'content' => t('Node Content Field'),
@@ -198,7 +199,7 @@ function json_ld_settings_form() {
       );
     }
 
-    $row['json_ld_node_type_' . $type->type] = array(
+    $row_node['json_ld_node_type_' . $type->type] = array(
       'type' => t($type->type),
       'schema' => array('data' => $schema),
       'content' => array('data' => $content),
@@ -207,6 +208,7 @@ function json_ld_settings_form() {
   }
 
   // Default values for the table.
+  $table_defaults = array();
   $query = db_query("SELECT * FROM {variable} WHERE name LIKE 'json_ld_node_type%'");
   foreach ($query->fetchAll() as $default) {
     if (isset($default->value) && unserialize($default->value)) {
@@ -214,11 +216,21 @@ function json_ld_settings_form() {
     }
   }
 
+  // Node Type filter.
+  $form['nt'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Node Types'),
+    '#description' => t('In order for the node type fields to be processed, you must select the checkbox.'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+
   // Set the table select.
-  $form['table'] = array(
+  $form['nt']['node_table'] = array(
+    '#title' => t('Node Types'),
     '#type' => 'tableselect',
-    '#header' => $header,
-    '#options' => $row,
+    '#header' => $node_header,
+    '#options' => $row_node,
     '#default_value' => $table_defaults,
     '#empty' => t('No Content Types.'),
   );
@@ -233,6 +245,58 @@ function json_ld_settings_form() {
   $form['image'] = array(
     '#type' => 'value',
   );
+
+
+  // Win the Views now.
+  $views = views_get_all_views();
+
+  $view_header = array(
+    'name' => t('View Name'),
+    'machine_name' => t('View Machine Name'),
+    'display' => t('Display'),
+  );
+  // Win the view table and displays.
+  foreach ($views as $view) {
+    if (!$view->disabled) {
+      if (isset($view->display)) {
+        foreach ($view->display as $dname => $display) {
+          $row_view['json_ld_view_' . $view->name . '_' . $dname] = array(
+            'name' => $view->human_name,
+            'machine_name' => $view->name,
+            'display' => $display->display_title,
+          );
+        }
+      }
+    }
+  }
+
+  // Default values for the table.
+  $view_defaults = array();
+  $query = db_query("SELECT * FROM {variable} WHERE name LIKE 'json_ld_view%'");
+  foreach ($query->fetchAll() as $default) {
+    if (isset($default->value) && unserialize($default->value)) {
+      $view_defaults[$default->name] = TRUE;
+    }
+  }
+
+  // Node Type filter.
+  $form['vw'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Views'),
+    '#description' => t('In order for this to work, the view must have nid OR title fields && the node type form which the view is derived from must be enabled and configured above.'),
+    '#collapsible' => FALSE,
+    '#collapsed' => FALSE,
+  );
+  // Set the table select.
+  $form['vw']['views_table'] = array(
+    '#title' => t('Node Types'),
+    '#type' => 'tableselect',
+    '#header' => $view_header,
+    '#options' => $row_view,
+    '#default_value' => $view_defaults,
+    '#empty' => t('No Content Types.'),
+  );
+
 
   // Custom submit handler.
   $form['#submit'][] = '_json_ld_form_submit';
@@ -257,7 +321,8 @@ function _json_ld_form_submit($form, &$form_state) {
         file_usage_add($file, 'json_ld', 'logo', $user->uid);
         variable_set('json_ld_site_' . $key, $file->fid);
         break;
-      case 'table':
+      case 'node_table':
+      case 'views_table':
         // Set variables to use later.
         foreach ($values as $name => $value) {
           if ($value) {
@@ -273,6 +338,7 @@ function _json_ld_form_submit($form, &$form_state) {
       case 'image':
         // Set variables to use later.
         foreach ($values as $name => $value) {
+          $value = trim($value);
           if ($value != '- None -' && !empty($value)) {
             variable_set($name, $value);
           }

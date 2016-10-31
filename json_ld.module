@@ -60,6 +60,28 @@ function json_ld_preprocess_html(&$vars) {
 }
 
 /**
+ * Implements hook_views_pre_render().
+ */
+function json_ld_views_pre_render(&$view) {
+  // If this view is good to go.
+  if (variable_get('json_ld_view_' . $view->name . '_' . $view->current_display, FALSE)) {
+    // Go through the view on the page.
+    foreach ($view->result as $result) {
+      if (isset($result->nid)) {
+        $nodez[] = $result->nid;
+      }
+    }
+
+    if (isset($nodez)) {
+      $nodes = node_load_multiple($nodez);
+      foreach ($nodes as $node) {
+        json_ld_add_output($node);
+      }
+    }
+  }
+}
+
+/**
  * Output JSON-LD for a node.
  *
  * @param  object $node
@@ -71,7 +93,8 @@ function json_ld_preprocess_html(&$vars) {
 function json_ld_output_node($node) {
   global $base_url;
 
-  // Grab the variables;
+  // Grab the variables.
+  $json_vars = array();
   $query = db_query("SELECT * FROM {variable} WHERE name LIKE 'json_ld_%'");
   foreach ($query->fetchAll() as $result) {
     $json_vars[$result->name] = unserialize($result->value);
@@ -103,7 +126,7 @@ function json_ld_output_node($node) {
   $data['headline'] = $node->title;
 
   // Content Image Winz.
-  if (!empty($image) && $image != '- None -') {
+  if (!empty($image)) {
     $field = field_get_items('node', $node, $image);
     if (!empty($field)) {
       // If multiple, just grab the first and do it.
@@ -153,8 +176,12 @@ function json_ld_output_node($node) {
   );
 
   // Set the description.
-  if (!empty($content) && $content != '- None -') {
-    $field = render(field_view_field('node', $node, $content, array('label'=>'hidden')));
+  if (!empty($content)) {
+    $field = field_view_field('node', $node, $content, array('label'=>'hidden'));
+    $field = render($field);
+    // Clean up the string so it is just text.
+    $field = str_replace(PHP_EOL, '', $field);
+    $field = trim(preg_replace('/\t+/', '', $field));
     $data['description'] = strip_tags($field);
   }
   else {
