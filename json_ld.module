@@ -188,7 +188,7 @@ function json_ld_output_node($node) {
     $field = str_replace(PHP_EOL, '', $field);
     $field = trim(preg_replace('/\t+/', '', $field));
     $field = preg_replace("/ {2,}/", ' ', $field);
-    $data['description'] = $field;
+    $data['description'] = !empty($field) ? $field : variable_get('json_ld_site_desc', '');
   }
   else {
     $data['description'] = variable_get('json_ld_site_desc', '');
