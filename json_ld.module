@@ -325,13 +325,18 @@ function json_ld_add_script($jsonld, $key) {
  *
  * @param array|NULL $data
  *   Additional data that may be added to the output.
+ *
+ * @param bool $data
+ *   If you want a custom data add and skip the node.
  */
-function json_ld_add_output($node, $data = NULL) {
+function json_ld_add_output($node, $data = NULL, $custom = FALSE) {
   // Set the base vars.
   $jsonld = array();
   $jsonld['@context'] = 'http://schema.org';
   // Add our stuff.
-  $jsonld += json_ld_output_node($node);
+  if (!$custom) {
+    $jsonld += json_ld_output_node($node);
+  }
   // Add your stuff
   if (isset($data) && is_array($data)) {
     $jsonld += $data;
