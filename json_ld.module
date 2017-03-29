@@ -40,43 +40,49 @@ function json_ld_menu() {
  * Implements template_preprocess_html().
  */
 function json_ld_preprocess_html(&$vars) {
-  // Base vars.
-  $jsonld = array();
-  $jsonld['@context'] = 'http://schema.org';
+  // Not on any admin based pages
+  if (!path_is_admin(current_path())) {
+    // Base vars.
+    $jsonld = array();
+    $jsonld['@context'] = 'http://schema.org';
 
-  // Check Current Node.
-  $node = menu_get_object();
-  if (isset($node)) {
-    $jsonld += json_ld_output_node($node);
-    $key = $node->title;
-  }
-  // Basic Default Types.
-  else {
-    $jsonld += json_ld_output_default();
-    $key = 'default';
-  }
+    // Check Current Node.
+    $node = menu_get_object();
+    if (isset($node)) {
+      $jsonld += json_ld_output_node($node);
+      $key = $node->title;
+    }
+    // Basic Default Types.
+    else {
+      $jsonld += json_ld_output_default();
+      $key = 'default';
+    }
 
-  json_ld_add_script($jsonld, $key);
+    json_ld_add_script($jsonld, $key);
+  }
 }
 
 /**
  * Implements hook_views_pre_render().
  */
 function json_ld_views_pre_render(&$view) {
-  // If this view is good to go.
-  if (variable_get('json_ld_view_' . $view->name . '_' . $view->current_display, FALSE)) {
-    // Go through the view on the page.
-    foreach ($view->result as $result) {
-      if (isset($result->nid)) {
-        $nodez[] = $result->nid;
+  // Not on any admin based pages
+  if (!path_is_admin(current_path())) {
+    // If this view is good to go.
+    if (variable_get('json_ld_view_' . $view->name . '_' . $view->current_display, FALSE)) {
+      // Go through the view on the page.
+      foreach ($view->result as $result) {
+        if (isset($result->nid)) {
+          $nodez[] = $result->nid;
+        }
       }
-    }
 
-    // Add output to the nodes.
-    if (isset($nodez)) {
-      $nodes = node_load_multiple($nodez);
-      foreach ($nodes as $node) {
-        json_ld_add_output($node);
+      // Add output to the nodes.
+      if (isset($nodez)) {
+        $nodes = node_load_multiple($nodez);
+        foreach ($nodes as $node) {
+          json_ld_add_output($node);
+        }
       }
     }
   }
